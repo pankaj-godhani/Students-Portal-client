@@ -22,7 +22,7 @@
             </thead>
             <tbody>
             <tr v-for="session in sessions" :key="session.id">
-                <td></td>
+                <td>{{ session.session.id }}</td>
                 <td>{{ session.session.start_time }}</td>
                 <td>{{ session.session.end_time }}</td>
                 <td>{{ session.session.target }}</td>
@@ -65,6 +65,7 @@ export default {
         fetchSessions() {
             axios.get(`/api/students/${this.id}/sessions`)
                 .then(response => {
+                    console.log(response);
                     this.sessions = response.data.session;
                     this.studentName = response.data.student.full_name;  // Assuming the backend also returns the student's name
                 });
@@ -73,7 +74,8 @@ export default {
             this.$router.push({ name: 'Students' });
         },
         openSessionsInNewTab(sessionID) {
-            const route = this.$router.resolve({ name: 'SessionsRating', params: { sessionId: sessionID } });
+           console.log(sessionID);
+            const route = this.$router.resolve({ name: 'SessionsRating', params: { id: sessionID } });
             window.open(route.href);
         }
     }

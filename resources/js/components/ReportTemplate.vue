@@ -2,6 +2,9 @@
     <Navigation/>
     <div class="report-template container mt-5">
         <h3>Template</h3>
+        <div v-if="successMessage" class="alert alert-success mt-3">
+            {{ successMessage }}
+        </div>
         <div ref="editor"></div>
         <button @click="saveTemplate" class="btn btn-primary mt-3">Save report template</button>
     </div>
@@ -28,6 +31,7 @@ export default {
         <p>Achieved: @session_rating</p>
         <p>Lorem Ipsum is simply @student_full_name text of the printing and typesetting industry.</p>
       `,
+            successMessage:''
         };
     },
     mounted() {
@@ -43,7 +47,7 @@ export default {
                 template_content: templateContent
             })
                 .then(response => {
-                    alert('Template saved successfully!');
+                    this.successMessage = 'Template saved successfully!';
                 })
                 .catch(error => {
                     console.error('There was an error saving the template:', error);

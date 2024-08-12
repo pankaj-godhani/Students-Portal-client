@@ -10,7 +10,11 @@
                 <label for="password">Password</label>
                 <input type="password" class="form-control" v-model="password" required>
             </div>
+            <div v-if="error" class="alert alert-danger mt-3">
+                {{ error }}
+            </div>
             <button type="submit">Login</button>
+
         </form>
     </div>
 </template>
@@ -22,7 +26,8 @@ export default {
     data() {
         return {
             email: '',
-            password: ''
+            password: '',
+            error :''
         };
     },
     methods: {
@@ -47,7 +52,6 @@ export default {
                     console.error('Token not found in response');
                 }
             } catch (error) {
-                console.error('Login failed:', error);
                 this.error = 'Invalid credentials';
             }
         }

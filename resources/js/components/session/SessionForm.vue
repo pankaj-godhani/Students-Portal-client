@@ -2,6 +2,14 @@
     <Navigation/>
     <div class="container mt-5">
         <h3>Schedule a Session</h3>
+
+        <div v-if="successMessage" class="alert alert-success mt-3">
+            {{ successMessage }}
+        </div>
+        <div v-if="alertMessage" class="alert alert-danger mt-3">
+            {{ alertMessage }}
+        </div>
+
         <form @submit.prevent="scheduleSession">
             <div class="form-group col-sm-6">
                 <label for="student">Student</label>
@@ -55,6 +63,8 @@ export default {
                 // end_time: '',
                 target: '',
                 is_repeated: false,
+                successMessage:'',
+                alertMessage:'',
             },
             students: [],
         };
@@ -71,6 +81,14 @@ export default {
             axios.post('/api/sessions', this.form)
                 .then(response => {
                     console.log(response);
+                    if(response.status === 200){
+                        this.successMessage = "Session Added successfully!";
+                       const route= this.$router.resolve({ name: 'StudentSessions', params: { id: this.form.student_id } });
+                        window.open(route,'_blank');
+                    }
+                    else{
+                        this.alertMessage = "Something went wrong!";
+                    }
                 });
         }
 

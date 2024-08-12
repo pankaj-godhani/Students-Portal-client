@@ -2,18 +2,43 @@
     <Navigation/>
     <div class="generate-report container mt-5">
         <h3>Generate Report for Student ID: {{ studentId }}</h3>
-        <div class="form-group d-flex col-sm-6">
-            <label>Select Template:</label>
-            <select v-model="selectedTemplateId" class="form-control ">
+
+        <div v-if="successMessage" class="alert alert-success mt-3">
+            {{ successMessage }}
+        </div>
+        <div v-if="alertMessage" class="alert alert-danger mt-3">
+            {{ alertMessage }}
+        </div>
+        <div class="form-group ">
+            <label>Template:</label>
+            <select v-model="selectedTemplateId" class="form-control w-50">
+                <option disabled value="">Select Template</option>
                 <option v-for="template in templates" :key="template.id" :value="template.id">
                     {{ template.name || 'Template ' + template.id }}
                 </option>
             </select>
         </div>
-        <div class="form-group d-flex gap-4">
-            <label>Select Date Range:</label>
-            <input type="date" class="form-control" style="width: 30%" v-model="startDate">
-            <input type="date" class="form-control" style="width: 30%" v-model="endDate">
+        <div class="row border-0">
+            <div class="form-group col-sm-6">
+                <label>From Date:</label>
+                    <input type="date" class="form-control" v-model="startDate">
+
+            </div>
+            <div class="form-group  col-sm-6">
+                <label>To Date:</label>
+                    <input type="date" class="form-control" v-model="endDate">
+
+            </div>
+        </div>
+
+        <div>
+            <label for="splitSession">Split Session in Minutes</label>
+            <select v-model="splitMinutes" id="splitSession" class="form-control w-50">
+                <option value="15">15 min</option>
+                <option value="10">10 min</option>
+                <option value="5">5 min</option>
+                <option value="2">2 min</option>
+            </select>
         </div>
         <button class="btn btn-primary" @click="generateReport">Generate Report</button>
     </div>
@@ -28,10 +53,13 @@ export default {
     data() {
         return {
             templates: [],
-            selectedTemplateId: null,
+            selectedTemplateId: "",
             startDate: '',
             endDate: '',
-            studentId: null
+            splitMinutes: 15,
+            studentId: null,
+            alertMessage: '',
+            successMessage: '',
         };
     },
     methods: {
@@ -50,55 +78,27 @@ export default {
                 template_id: this.selectedTemplateId,
                 start_date: this.startDate,
                 end_date: this.endDate,
+                splitMinutes: this.splitMinutes,
                 // responseType: "blob", // important
             }, { responseType: 'blob' })
                 .then(response => {
+                    console.log(response.status);
 
-
-                    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+                    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/zip' }));
                     const link = document.createElement('a');
                     link.href = url;
-                    link.setAttribute('download', `student_report_${this.studentId}.pdf`);
+                    link.setAttribute('download', `student_reports_${this.studentId}.zip`);
                     document.body.appendChild(link);
                     link.click();
                     link.remove();
-
-
-
-                    // const url = window.URL.createObjectURL(new Blob([response.data]));
-                    // const link = document.createElement('a');
-                    // link.href = url;
-                    // link.setAttribute('download', `student_report_${this.studentId}.pdf`);
-                    // document.body.appendChild(link);
-                    // link.click();
-                    // link.remove();
-
-                    // const pdfUrl = response.data.pdf_url;
-                    // console.log(pdfUrl);
-
-                    // Create a link element and click it to download the PDF
-                    // const link = document.createElement('a');
-                    // link.href = pdfUrl;
-                    // link.download = `student_report_${this.studentId}.pdf`;
-                    // document.body.appendChild(link);
-                    // link.click();
-
-                    // const url = window.URL.createObjectURL(new Blob([response.data],{ type: 'application/pdf' }));
-                    // console.log(url);
-                    // const link = document.createElement("a");
-                    // link.href = url;
-                    // link.setAttribute("download", `student_report_${this.studentId}.pdf`);
-                    // document.body.appendChild(link);
-                    // link.click();
-                    // link.remove();
-
-
-
-                    // Remove the link element after clicking
-                    // document.body.removeChild(link);
-
+                    this.successMessage = "Report generate successfully!";
+                    this.file = null; // Optionally clear the file input
+                    setTimeout(() => {
+                    }, 2000);
                 })
                 .catch(error => {
+
+                    this.alertMessage ='Something went wrong';
                     console.error('Error generating report:', error);
                 });
         }

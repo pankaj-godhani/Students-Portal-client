@@ -16,7 +16,7 @@ class SessionController extends Controller
             'student_id' => 'required|exists:students,id',
             'start_time' => 'required|date',
             'target' => 'required',
-            'is_repeated' => 'boolean',
+            'is_repeated' => 'nullable|boolean',
         ]);
 
         $startTime = Carbon::parse($request->start_time);
@@ -54,7 +54,7 @@ class SessionController extends Controller
         // Schedule notification (assuming you have a notification system in place)
         // Notification logic would go here
 
-        return response()->json($session, 201);
+        return response()->json($session);
     }
 
     public function rate(Request $request, StudentSession $studentSession)

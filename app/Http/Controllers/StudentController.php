@@ -44,7 +44,7 @@ class StudentController extends Controller
         return $data;
     }
 
-    public function rate(Request $request, Session $session)
+    public function rate(Request $request, StudentSession $session)
     {
         $request->validate([
             'rating' => 'required|integer|min:1|max:10',

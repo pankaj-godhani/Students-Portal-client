@@ -3,7 +3,7 @@
     <div class="container mt-5" >
         <h3>Add Student</h3>
         <form @submit.prevent="addStudent">
-            <div class="row">
+            <div class="row border-0">
                 <div class="form-group col-sm-6">
                     <label for="first_name">First Name</label>
                     <input type="text" v-model="student.first_name" class="form-control" placeholder="Enter First Name" required>
@@ -13,7 +13,7 @@
                     <input type="text" v-model="student.middle_name" class="form-control" placeholder="Enter Middle Name">
                 </div>
             </div>
-            <div class="row">
+            <div class="row border-0">
                 <div class="form-group col-sm-6">
                     <label for="last_name">Last Name</label>
                     <input type="text" v-model="student.last_name" class="form-control" placeholder="Enter Last Name" required>
@@ -23,7 +23,7 @@
                     <input type="number" v-model="student.age" class="form-control " placeholder="Enter Age" required>
                 </div>
             </div>
-            <div class="row">
+            <div class="row border-0">
                 <div class="form-group col-sm-6">
                     <label for="gender">Gender</label> <br/>
                     <input type="radio" id="one" value="Female" class="me-2" v-model="student.gender" />

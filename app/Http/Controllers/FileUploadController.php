@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Session;
+use App\Models\StudentSession;
 use App\Models\StudentTarget;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use PhpOffice\PhpWord\IOFactory;
 use App\Models\Student;
@@ -18,9 +21,17 @@ class FileUploadController extends Controller
 
         $file = $request->file('file');
 
-        $phpWord = IOFactory::load($file->getPathName(), 'Word2007');
+
+
+        $phpWord = IOFactory::load($file->getPathName());
+        foreach ($phpWord->getSections() as $section) {
+            // If a header exists, remove it
+            if ($section->hasHeader()) {
+                $section->removeHeader();
+            }
+        }
         $text = '';
-//dd($phpWord);
+
         // Iterate over the sections and extract the text
         foreach ($phpWord->getSections() as $section) {
             foreach ($section->getElements() as $element) {
@@ -30,7 +41,7 @@ class FileUploadController extends Controller
                     case 'PhpOffice\PhpWord\Element\TextRun':
                         foreach ($element->getElements() as $textElement) {
                             if (method_exists($textElement, 'getText')) {
-                                $text .= $textElement->getText();
+                                $text .= $textElement->getText() . "\n";
                             }
                         }
                         break;
@@ -40,7 +51,7 @@ class FileUploadController extends Controller
                             foreach ($row->getCells() as $cell) {
                                 foreach ($cell->getElements() as $cellElement) {
                                     if (method_exists($cellElement, 'getText')) {
-                                        $text .= $cellElement->getText() . " ";
+                                        $text .= $cellElement->getText() . "\n";
                                     }
                                 }
                             }
@@ -49,12 +60,13 @@ class FileUploadController extends Controller
 
                     // Add more cases if needed for other element types
 
-                    default:
-                        // Handle or skip unknown types
-                        break;
+//                    default:
+//                        // Handle or skip unknown types
+//                        break;
                 }
             }
         }
+
 
         $this->storeParsedData($text,$request->student_id);
 
@@ -64,40 +76,137 @@ class FileUploadController extends Controller
         return response()->json(['message' => 'File uploaded and parsed successfully.']);
     }
 
-
-    private function storeParsedData($text, $studentId)
+    protected function storeParsedData($text,$studentId)
     {
-        // Split the text into sections based on a unique identifier (e.g., 'Bx')
-        $sections = preg_split('/Bx \d+\./', $text);
-        foreach ($sections as $section) {
+        $lines = explode("\n", $text);
+        $studentData = [];
+        $currentData = [];
+        $tableType = null; // Variable to store the type of table being processed
+        $numberOfKeysBetween=0;
 
-            // Trim the section to remove any unnecessary whitespace
-            $section = trim($section);
-            if (empty($section)) {
-                continue;
+//        dd($lines);
+        foreach ($lines as $key=>$line) {
+            $line = trim($line);
+
+            if (strpos($line, 'Subject name') !== false) {
+                $tableType = 'type1';
+                if (!empty($currentData)) {
+                    $studentData[] = $currentData;
+                }
+                $currentData = [];
+            } elseif (strpos($line, 'Subject') !== false && strpos($line, 'name') === false) {
+                $tableType = 'type2'; // Type 2: Theoretical Knowledge
+
+                $subjectIndex = array_search("Subject", $lines);
+                $targetIndex = array_search("Target", $lines);
+                $numberOfKeysBetween = abs($targetIndex - $subjectIndex) + 1;
+                if (!empty($currentData)) {
+                    $studentData[] = $currentData;
+                }
+                $currentData = [];
             }
-//            dd($section);
 
-            // Extract data using regex or other string operations
-            preg_match('/Subject name\s+([^\n]+)/', $section, $subjectMatch);
-            preg_match('/Area of weakness\s+([^\n]+)/', $section, $areaMatch);
-            preg_match('/Session start date\s+([^\n]+)/', $section, $startDateMatch);
-            preg_match('/Session end date\s+([^\n]+)/', $section, $endDateMatch);
-            preg_match('/target|Improvement target\s+(\d+)/i', $section, $targetMatch);
+            if ($tableType === 'type1') {
+                if (strpos($line, 'Subject name') !== false) {
+                    $currentData['subject'] = $lines[$key + 2];
+                }
 
+                if (strpos($line, 'Area of weakness') !== false) {
+                    if (!isset($currentData['area_of_weakness'])) {
+                        $currentData['area_of_weakness'] = $lines[$key + 2];
+                    }
+                }
 
-            // If all required data is found, store it in the database
-            if (isset($subjectMatch[1], $areaMatch[1], $startDateMatch[1], $endDateMatch[1], $targetMatch[1])) {
-                print_r($subjectMatch);
-                StudentTarget::create([
-                    'student_id' => $studentId, // Use the provided student ID
-                    'subject' => trim($subjectMatch[1]),
-                    'area_of_weakness' => trim($areaMatch[1]),
-                    'session_start_date' => date('Y-m-d', strtotime(trim($startDateMatch[1]))),
-                    'session_end_date' => date('Y-m-d', strtotime(trim($endDateMatch[1]))),
-                    'improvement_target' => (int)trim($targetMatch[1]),
-                ]);
+                if (strpos($line, 'Session start date') !== false || strpos($line, 'Start Date') !== false) {
+                    $currentData['session_start_date'] = $lines[$key + 1];
+                }
+
+                if (strpos($line, 'Session end date') !== false || strpos($line, 'End Date') !== false) {
+                    $currentData['session_end_date'] = $lines[$key + 1];
+                }
+
+                if (strpos($line, 'Improvement target') !== false || strpos($line, 'target') !== false) {
+                    $currentData['improvement_target'] = $lines[$key + 1];
+                }
             }
+            elseif ($tableType === 'type2'){
+
+                if ($line === 'Subject') {
+                    $currentData['subject'] = $lines[$key + $numberOfKeysBetween];
+                }
+                if ($line === 'Area of weakness') {
+                    $currentData['area_of_weakness'] = $lines[$key + $numberOfKeysBetween];
+                }
+                if ($line === 'Date') {
+                    $dateRange = explode(' to ', $lines[$key + $numberOfKeysBetween]);
+                    $currentData['session_start_date'] = $dateRange[0];
+                    $currentData['session_end_date'] = isset($dateRange[1]) ? $dateRange[1] : null;
+                }
+                if($line === 'Start From'){
+                    $currentData['session_start_date'] = $lines[$key + $numberOfKeysBetween];
+                }
+                if($line === 'End To'){
+                    $currentData['session_end_date'] = $lines[$key + $numberOfKeysBetween];
+                }
+                if ($line === 'Target') {
+                    $currentData['improvement_target'] = str_replace(" per session", '', $lines[$key + $numberOfKeysBetween]);
+                    if (!empty($currentData)) {
+                        $studentData[] = $currentData;
+                    }
+                    $currentData = [];
+                    $lastKey = $key+$numberOfKeysBetween+1;
+                    $lastKeyValue  = $lines[$key + $numberOfKeysBetween +1];
+                    if( $lastKeyValue !== ""  || $lastKeyValue  !== 'Assessment'){
+                        $currentData['subject'] = $lastKeyValue;
+                        $currentData['area_of_weakness'] = $lines[$lastKey+1];
+
+                        if($numberOfKeysBetween == 5){
+                            $currentData['session_start_date'] = $lines[$key + $numberOfKeysBetween+2];
+                            $currentData['session_end_date'] = $lines[$key + $numberOfKeysBetween+3];
+                            $currentData['improvement_target'] =str_replace(" per session", '', $lines[$lastKey+4]);
+
+                        }else{
+                            $dateRange = explode(' to ', $lines[$lastKey+2]);
+                            $currentData['session_start_date'] = $dateRange[0];
+                            $currentData['session_end_date'] = isset($dateRange[1]) ? $dateRange[1] : null;
+                            $currentData['improvement_target'] =str_replace(" per session", '', $lines[$lastKey+3]);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!empty($currentData)) {
+            $studentData[] = $currentData;
+        }
+
+
+        foreach ($studentData as $student) {
+            StudentTarget::create([
+                'student_id' => $studentId,
+                'subject' => $student['subject'],
+                'area_of_weakness' => $student['area_of_weakness'],
+                'session_start_date' => date('Y-m-d',strtotime($student['session_start_date'])),
+                'session_end_date' => date('Y-m-d',strtotime($student['session_end_date'])),
+                'improvement_target' => $student['improvement_target'],
+            ]);
+
+            $startTime = Carbon::parse(strtotime($student['session_start_date']));
+            $endTime = $startTime->copy()->addMinutes(15);
+
+            $session = Session::create([
+                'user_id' => auth()->id(),
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+                'target' => $student['improvement_target'],
+                'is_repeated' =>  false,
+            ]);
+
+            $studentSession = StudentSession::create([
+                'student_id' => $studentId,
+                'session_id' => $session->id,
+            ]);
+
         }
     }
 

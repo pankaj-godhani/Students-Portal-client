@@ -20,6 +20,9 @@
                     <li class="nav-item">
                         <router-link to="/report-template" class="nav-link" exact-active-class="active">Template</router-link>
                     </li>
+                    <li class="nav-item">
+                        <router-link to="/file-upload" class="nav-link" exact-active-class="active">File Upload</router-link>
+                    </li>
                 </ul>
             </div>
             <logout/>
